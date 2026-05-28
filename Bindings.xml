@@ -1,0 +1,21 @@
+<!--
+  Do not list this file in AudioProfiles.toc. The client loads Bindings.xml automatically;
+  including it in .toc parses it as Frame UI XML and causes "Unrecognized XML: Binding".
+-->
+<Bindings>
+	<Binding name="AUDIO_PROFILES_TOGGLE" category="BINDING_HEADER_AUDIO_PROFILES">
+		if ToggleAudioProfilesFrame then
+			ToggleAudioProfilesFrame();
+		end
+	</Binding>
+	<Binding name="AUDIO_PROFILES_NEXT" category="BINDING_HEADER_AUDIO_PROFILES">
+		if AudioProfiles_ApplyNext then
+			AudioProfiles_ApplyNext();
+		end
+	</Binding>
+	<Binding name="AUDIO_PROFILES_PREV" category="BINDING_HEADER_AUDIO_PROFILES">
+		if AudioProfiles_ApplyPrev then
+			AudioProfiles_ApplyPrev();
+		end
+	</Binding>
+</Bindings>

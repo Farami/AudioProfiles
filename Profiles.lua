@@ -24,7 +24,6 @@ function NS.ProfileFromWidgetsInto(p)
   p.sfx = NS.ui.slSFX:GetValue() / 100
   p.ambience = NS.ui.slAmb:GetValue() / 100
   p.dialog = NS.ui.slDlg:GetValue() / 100
-  p.dsp = NS.ui.cbDSP:GetChecked()
 end
 
 function NS.SyncSelectedFromWidgets()
@@ -47,7 +46,6 @@ function NS.WidgetsFromProfile(p)
   ui.slSFX:SetValue(p.sfx * 100)
   ui.slAmb:SetValue(p.ambience * 100)
   ui.slDlg:SetValue(p.dialog * 100)
-  ui.cbDSP:SetChecked(p.dsp)
   uiSilent = false
   NS.RefreshSliderVisuals()
   NS.RefreshSwitchVisuals()
@@ -64,6 +62,8 @@ function NS.RefreshList()
   local child = ui.listScroll.Child
   local rowH = 28
   local n = #DB.profiles
+
+  child:SetWidth(math.max(118, ui.listScroll:GetWidth() or 0))
 
   for i = 1, math.max(n, #ui.listBtns) do
     local btn = ui.listBtns[i]
@@ -94,6 +94,7 @@ function NS.RefreshList()
     end
   end
   ui.listScroll.Child:SetHeight(math.max(1, n) * (rowH + 2))
+  NS.UpdateListScroll()
 end
 
 function NS.RefreshQuickBar()
@@ -146,22 +147,33 @@ function NS.RefreshQuickBar()
   ui.qbFrame:SetWidth(math.max(80, contentW + SIDE * 2))
 end
 
-ApplyIndex = function(i, silent)
+ApplyIndex = function(i, silent, manual)
   NS.PrepareUI()
   local p = NS.db.profiles[i]
   if not p then
     return
   end
+
+  if manual == nil then
+    manual = not silent
+  end
+
   if NS.ApplySnap(p) then
     NS.db.selectedIndex = i
     NS.db.lastAppliedName = p.name
+    if manual then
+      NS.SetContentSuppress()
+    end
     NS.WidgetsFromProfile(p)
     NS.RefreshList()
     NS.RefreshQuickBar()
     if not silent then
       NS.Print("Applied: " .. p.name)
     end
+    return true
   end
+
+  return false
 end
 
 NS.ApplyProfileIndex = ApplyIndex
@@ -201,7 +213,7 @@ function NS.ApplyNextProfile()
     return
   end
   local i = (NS.db.selectedIndex % n) + 1
-  ApplyIndex(i, true)
+  ApplyIndex(i, true, true)
   if NS.ui.frame and NS.ui.frame:IsShown() then
     NS.RefreshList()
     NS.WidgetsFromProfile(NS.SelectedProfile())
@@ -219,7 +231,7 @@ function NS.ApplyPrevProfile()
   if i < 1 then
     i = n
   end
-  ApplyIndex(i, true)
+  ApplyIndex(i, true, true)
   if NS.ui.frame and NS.ui.frame:IsShown() then
     NS.RefreshList()
     NS.WidgetsFromProfile(NS.SelectedProfile())

@@ -23,11 +23,31 @@ local TEXT_DIM = { 0.56, 0.56, 0.60 }
 local TITLE_H = 38
 local PAD = 14
 local GAP = 10
-local FOOTER_H = 96
+local CONTENT_COL_GAP = 32
+local CONTENT_LABEL_W = 122
+local CONTENT_ROW_H = 30
+local FOOTER_PAD = 12
+local FOOTER_TOGGLE_H = 28
+local FOOTER_TOGGLE_GAP = 4
+local FOOTER_SECTION_GAP = 10
+local FOOTER_HEADING_H = 14
+local FOOTER_CONTENT_ROWS = 4
+local FOOTER_CONTENT_BLOCK_H = FOOTER_PAD + FOOTER_CONTENT_ROWS * (CONTENT_ROW_H + 4)
+local FOOTER_CONTENT_SECTION_H = FOOTER_CONTENT_BLOCK_H + 6 + FOOTER_TOGGLE_H + 8 + FOOTER_HEADING_H
+local FOOTER_OPTIONS_SECTION_H = FOOTER_TOGGLE_H + FOOTER_TOGGLE_GAP + FOOTER_TOGGLE_H + 8 + FOOTER_HEADING_H
+local FOOTER_H = FOOTER_CONTENT_SECTION_H + FOOTER_SECTION_GAP + FOOTER_OPTIONS_SECTION_H + FOOTER_PAD
 local LIST_W = 184
 local LIST_PAD = 18
-local WIN_W = 588
-local WIN_H = 580
+local LIST_SCROLLBAR_W = 14
+local LIST_SCROLLBAR_GAP = 8
+local WIN_W = 640
+local WIN_H = 760
+local MIXER_BTN_H = 30
+local MIXER_BTN_PAD = 12
+local MIXER_NAME_BLOCK_H = 84
+local MIXER_BTN_BLOCK_H = MIXER_BTN_PAD + MIXER_BTN_H + 14
+local MIXER_SLIDER_GAP = 8
+local MIXER_SLIDER_MIN_H = 32
 
 local function AddonMetaVersion(folderName)
   if C_AddOns and C_AddOns.GetAddOnMetadata then
@@ -250,6 +270,212 @@ local function CreateButton(parent, w, h, label, primary)
   return btn
 end
 
+local function TruncateText(text, maxLen)
+  if not text or #text <= maxLen then
+    return text or ""
+  end
+
+  return text:sub(1, maxLen - 2) .. ".."
+end
+
+local function HidePickerMenu(picker)
+  if picker._menu then
+    picker._menu:Hide()
+  end
+end
+
+local function SetPickerLabel(picker, text)
+  picker._apText:SetText(TruncateText(text, picker._apMaxChars or 18))
+  picker._apValue = text
+end
+
+local function PositionPickerMenu(picker)
+  local menu = picker._menu
+  if not menu then
+    return
+  end
+
+  menu:ClearAllPoints()
+  menu:SetWidth(picker:GetWidth())
+  menu:SetPoint("TOPLEFT", picker, "BOTTOMLEFT", 0, -2)
+end
+
+local function BuildPickerMenu(picker, tag, DB)
+  local menu = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+  menu:SetSize(picker:GetWidth(), 10)
+  menu:SetFrameStrata("FULLSCREEN_DIALOG")
+  menu:SetFrameLevel(500)
+  menu:Hide()
+  ApplyBackdrop(menu, PANEL, BORDER)
+  menu:EnableMouse(true)
+
+  local scroll = CreateFrame("ScrollFrame", nil, menu, "UIPanelScrollFrameTemplate")
+  scroll:SetPoint("TOPLEFT", 4, -4)
+  scroll:SetPoint("BOTTOMRIGHT", -24, 4)
+
+  local child = CreateFrame("Frame", nil, scroll)
+  child:SetWidth(picker:GetWidth() - 28)
+  scroll:SetScrollChild(child)
+
+  menu._apScroll = scroll
+  menu._apChild = child
+  menu._apButtons = {}
+
+  local function RebuildMenu()
+    for _, btn in ipairs(menu._apButtons) do
+      btn:Hide()
+    end
+
+    local options = { { text = "(none)", index = nil } }
+    for i, p in ipairs(DB.profiles) do
+      options[#options + 1] = { text = p.name, index = i }
+    end
+
+    local rowH = 24
+    local maxVisible = 8
+    local visibleRows = math.min(#options, maxVisible)
+    menu:SetHeight(visibleRows * (rowH + 2) + 8)
+    child:SetHeight(#options * (rowH + 2))
+
+    for i, opt in ipairs(options) do
+      local btn = menu._apButtons[i]
+      if not btn then
+        btn = CreateFrame("Button", nil, child, "BackdropTemplate")
+        ApplyBackdrop(btn, WIDGET_BG, BORDER)
+        btn:SetHeight(rowH)
+
+        local label = btn:CreateFontString(nil, "OVERLAY")
+        ApplyFont(label, 11)
+        label:SetPoint("LEFT", 8, 0)
+        label:SetPoint("RIGHT", -8, 0)
+        label:SetJustifyH("LEFT")
+        label:SetWordWrap(false)
+        btn._apLabel = label
+
+        btn:SetScript("OnEnter", function(self)
+          self:SetBackdropBorderColor(RGB(ACCENT))
+          self:SetBackdropColor(ACCENT[1] * 0.18, ACCENT[2] * 0.14, ACCENT[3] * 0.06, 1)
+        end)
+
+        btn:SetScript("OnLeave", function(self)
+          self:SetBackdropBorderColor(RGB(BORDER))
+          self:SetBackdropColor(RGB(WIDGET_BG))
+        end)
+
+        menu._apButtons[i] = btn
+      end
+
+      btn:SetSize(child:GetWidth(), rowH)
+      btn:ClearAllPoints()
+      btn:SetPoint("TOPLEFT", 0, -(i - 1) * (rowH + 2))
+      btn._apLabel:SetText(opt.text)
+      btn:SetScript("OnClick", function()
+        if opt.index then
+          DB.contentBindings[tag] = opt.index
+          SetPickerLabel(picker, opt.text)
+        else
+          DB.contentBindings[tag] = nil
+          SetPickerLabel(picker, "(none)")
+        end
+        menu:Hide()
+      end)
+      btn:Show()
+    end
+  end
+
+  menu.Rebuild = RebuildMenu
+  picker._menu = menu
+
+  menu:SetScript("OnHide", function()
+    picker._apOpen = false
+    picker:SetBackdropBorderColor(RGB(BORDER))
+  end)
+end
+
+local function MakeModernPicker(parent, tag, width, DB)
+  local row = CreateFrame("Frame", nil, parent)
+  row:SetHeight(CONTENT_ROW_H)
+
+  local label = row:CreateFontString(nil, "OVERLAY")
+  ApplyFont(label, 11)
+  label:SetPoint("LEFT", 0, 0)
+  label:SetWidth(CONTENT_LABEL_W)
+  label:SetJustifyH("LEFT")
+  label:SetWordWrap(false)
+  label:SetTextColor(RGB(TEXT_DIM))
+  label:SetText(NS.CONTENT_TAG_LABELS[tag] or tag)
+
+  local picker = CreateFrame("Button", nil, row, "BackdropTemplate")
+  picker:SetSize(width, 24)
+  picker:SetPoint("LEFT", label, "RIGHT", 8, 0)
+  ApplyBackdrop(picker, WIDGET_BG, BORDER)
+  picker._apTag = tag
+  picker._apMaxChars = math.max(10, math.floor(width / 7))
+
+  local text = picker:CreateFontString(nil, "OVERLAY")
+  ApplyFont(text, 11)
+  text:SetPoint("LEFT", 10, 0)
+  text:SetPoint("RIGHT", -18, 0)
+  text:SetJustifyH("LEFT")
+  text:SetWordWrap(false)
+  text:SetTextColor(RGB(TEXT))
+  picker._apText = text
+
+  local arrow = picker:CreateFontString(nil, "OVERLAY")
+  ApplyFont(arrow, 10)
+  arrow:SetPoint("RIGHT", -8, 0)
+  arrow:SetTextColor(RGB(TEXT_DIM))
+  arrow:SetText("v")
+
+  BuildPickerMenu(picker, tag, DB)
+
+  picker:SetScript("OnClick", function(self)
+    if NS.ui.contentPickers then
+      for _, other in pairs(NS.ui.contentPickers) do
+        if other ~= self then
+          HidePickerMenu(other)
+        end
+      end
+    end
+
+    if self._apOpen then
+      HidePickerMenu(self)
+      return
+    end
+
+    self._menu.Rebuild()
+    PositionPickerMenu(self)
+    self._apOpen = true
+    self:SetBackdropBorderColor(RGB(ACCENT))
+    self._menu:Show()
+  end)
+
+  picker:SetScript("OnEnter", function(self)
+    if not self._apOpen then
+      self:SetBackdropBorderColor(RGB(TEXT_DIM))
+    end
+  end)
+
+  picker:SetScript("OnLeave", function(self)
+    if not self._apOpen then
+      self:SetBackdropBorderColor(RGB(BORDER))
+    end
+  end)
+
+  local idx = DB.contentBindings[tag]
+  local initial = "(none)"
+  if idx and DB.profiles[idx] then
+    initial = DB.profiles[idx].name
+  end
+  SetPickerLabel(picker, initial)
+
+  picker.SetValue = function(_, value)
+    SetPickerLabel(picker, value)
+  end
+
+  return row, picker
+end
+
 function NS.SkinProfileListButton(btn)
   if btn._apStyled then
     return
@@ -319,7 +545,7 @@ end
 --- Refreshes custom toggle visuals bound to hidden checkboxes after profile sync.
 function NS.RefreshSwitchVisuals()
   local u = NS.ui
-  for _, row in ipairs({ u._toggleDSP, u._toggleLogin, u._toggleBar }) do
+  for _, row in ipairs({ u._toggleLogin, u._toggleBar, u._toggleContent }) do
     if row and row._update then
       row._update()
     end
@@ -361,12 +587,68 @@ function NS.UpdateOptionsCheckboxes()
     ui.cbBar:SetChecked(NS.db.showQuickBar)
   end
 
+  if ui.cbContent then
+    ui.cbContent:SetChecked(NS.db.autoSwitchByContent)
+  end
+
+  NS.RefreshSwitchVisuals()
+end
+
+function NS.UpdateListScroll()
+  local scroll = NS.ui.listScroll
+  if not scroll then
+    return
+  end
+
+  local child = scroll.Child
+  if child then
+    child:SetWidth(math.max(118, scroll:GetWidth() or 0))
+  end
+
+  scroll:UpdateScrollChildRect()
+  local needsScroll = (scroll:GetVerticalScrollRange() or 0) > 0
+  local scrollBar = scroll.ScrollBar
+
+  if scrollBar then
+    if needsScroll then
+      scrollBar:Show()
+    else
+      scrollBar:Hide()
+      scroll:SetVerticalScroll(0)
+    end
+  end
+end
+
+function NS.RefreshContentUI()
+  local ui = NS.ui
+  if not ui.frame then
+    return
+  end
+
+  if ui.contentStatus then
+    local ctx = NS.GetContentContext()
+    ui.contentStatus:SetText("Now: " .. ctx.label)
+  end
+
+  if ui.contentPickers then
+    local DB = NS.db
+    for tag, picker in pairs(ui.contentPickers) do
+      local idx = DB.contentBindings[tag]
+      local label = "(none)"
+      if idx and DB.profiles[idx] then
+        label = DB.profiles[idx].name
+      end
+      picker:SetValue(label)
+    end
+  end
+
   NS.RefreshSwitchVisuals()
 end
 
 function NS.PrepareUI()
   NS.EnsureDB()
   if NS.ui.frame then
+    NS.RefreshContentUI()
     return
   end
 
@@ -375,6 +657,7 @@ function NS.PrepareUI()
   NS.WidgetsFromProfile(NS.SelectedProfile())
   NS.UpdateOptionsCheckboxes()
   NS.RefreshQuickBar()
+  NS.RefreshContentUI()
 end
 
 local function BuildTitleBar(f, ver)
@@ -410,6 +693,12 @@ local function BuildTitleBar(f, ver)
   verStr:SetTextColor(RGB(TEXT_DIM))
   verStr:SetText("v" .. ver)
 
+  local creditStr = titleBar:CreateFontString(nil, "OVERLAY")
+  ApplyFont(creditStr, 9)
+  creditStr:SetPoint("RIGHT", verStr, "LEFT", -10, -1)
+  creditStr:SetTextColor(TEXT_DIM[1], TEXT_DIM[2], TEXT_DIM[3], 0.55)
+  creditStr:SetText("by Farami")
+
   local closeBtn = CreateFrame("Button", nil, titleBar)
   closeBtn:SetSize(28, 28)
   closeBtn:SetPoint("RIGHT", -6, 0)
@@ -441,14 +730,21 @@ local function BuildListPanel(panel, DB)
 
   local btnRowH = 26
   local barH = 10 + btnRowH + 6 + btnRowH + 10
+  local scrollRight = LIST_PAD + LIST_SCROLLBAR_W + LIST_SCROLLBAR_GAP
 
   local scroll = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
   scroll:SetPoint("TOPLEFT", LIST_PAD, -28)
-  scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -LIST_PAD, barH)
+  scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -scrollRight, barH)
 
   local child = CreateFrame("Frame", nil, scroll)
-  child:SetSize(LIST_W - 2 * LIST_PAD, 100)
+  local scrollContentW = LIST_W - LIST_PAD - scrollRight
+  child:SetSize(scrollContentW, 100)
   scroll:SetScrollChild(child)
+
+  if scroll.ScrollBar then
+    scroll.ScrollBar:Hide()
+    scroll.ScrollBar:SetWidth(LIST_SCROLLBAR_W)
+  end
 
   ui.listScroll = scroll
   scroll.Child = child
@@ -506,17 +802,21 @@ local function BuildListPanel(panel, DB)
       return
     end
 
-    table.remove(DB.profiles, DB.selectedIndex)
+    local deletedIndex = DB.selectedIndex
+    table.remove(DB.profiles, deletedIndex)
+    NS.ReindexContentBindingsAfterDelete(deletedIndex)
     DB.selectedIndex = math.min(DB.selectedIndex, #DB.profiles)
     NS.RefreshList()
-    NS.ApplyProfileIndex(DB.selectedIndex, true)
+    NS.ApplyProfileIndex(DB.selectedIndex, true, true)
     NS.RefreshQuickBar()
+    NS.RefreshContentUI()
   end)
 end
 
 local function BuildMixerPanel(panel, DB)
   local ui = NS.ui
   local innerW = (WIN_W - 2 * PAD - LIST_W - GAP) - 28
+  local mixerH = WIN_H - TITLE_H - PAD - FOOTER_H - PAD - GAP - GAP
 
   local heading = MakeHeading(panel, "Mixer")
   heading:SetPoint("TOPLEFT", 14, -10)
@@ -548,56 +848,17 @@ local function BuildMixerPanel(panel, DB)
 
   ui.nameEdit = nameEdit
 
-  local rows = {
-    { key = "slMaster", caption = "Master" },
-    { key = "slMusic", caption = "Music" },
-    { key = "slSFX", caption = "Sound effects" },
-    { key = "slAmb", caption = "Ambience" },
-    { key = "slDlg", caption = "Dialog" },
-  }
-
-  local anchor = nameEdit
-  local anchorPoint = "BOTTOMLEFT"
-  local anchorY = -16
-  for _, row in ipairs(rows) do
-    local slider, holder = MakeSliderRow(panel, row.caption)
-    holder:SetWidth(innerW)
-    holder:SetPoint("TOPLEFT", anchor, anchorPoint, 0, anchorY)
-    WireVolumeSlider(slider)
-    ui[row.key] = slider
-
-    anchor = holder
-    anchorPoint = "BOTTOMLEFT"
-    anchorY = -8
-  end
-
-  ui.cbDSP = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
-  ui.cbDSP:Hide()
-  ui.cbDSP:SetScript("OnClick", function()
-    if NS.IsUISilent() then
-      return
-    end
-
-    NS.SyncSelectedFromWidgets()
-    NS.ApplySnap(NS.SelectedProfile())
-  end)
-
-  local dspRow = MakeToggleRow(panel, ui.cbDSP, "Gameplay sound effects (DSP)")
-  dspRow:SetWidth(innerW)
-  dspRow:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -10)
-  ui._toggleDSP = dspRow
-
   local btnW = math.floor((innerW - 10) / 2)
 
-  local btnApply = CreateButton(panel, btnW, 30, "Apply to WoW", true)
-  btnApply:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -14, 12)
+  local btnApply = CreateButton(panel, btnW, MIXER_BTN_H, "Apply to WoW", true)
+  btnApply:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -14, MIXER_BTN_PAD)
   btnApply:SetScript("OnClick", function()
     NS.SyncSelectedFromWidgets()
     NS.ApplyProfileIndex(DB.selectedIndex)
   end)
 
-  local btnCap = CreateButton(panel, btnW, 30, "Load from WoW")
-  btnCap:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 14, 12)
+  local btnCap = CreateButton(panel, btnW, MIXER_BTN_H, "Load from WoW")
+  btnCap:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 14, MIXER_BTN_PAD)
   btnCap:SetScript("OnClick", function()
     local snap = NS.SnapFromGame()
     local p = NS.SelectedProfile()
@@ -606,25 +867,83 @@ local function BuildMixerPanel(panel, DB)
     NS.WidgetsFromProfile(p)
     NS.Print("Copied current WoW volumes into this profile.")
   end)
+
+  local rows = {
+    { key = "slMaster", caption = "Master" },
+    { key = "slMusic", caption = "Music" },
+    { key = "slSFX", caption = "Sound effects" },
+    { key = "slAmb", caption = "Ambience" },
+    { key = "slDlg", caption = "Dialog" },
+  }
+
+  local sliderAreaH = mixerH - MIXER_NAME_BLOCK_H - MIXER_BTN_BLOCK_H
+  local rowH = math.max(MIXER_SLIDER_MIN_H, math.floor((sliderAreaH - MIXER_SLIDER_GAP * (#rows - 1)) / #rows))
+  local rowStep = rowH + MIXER_SLIDER_GAP
+
+  for i, row in ipairs(rows) do
+    local slider, holder = MakeSliderRow(panel, row.caption)
+    holder:SetHeight(rowH)
+    holder:SetWidth(innerW)
+    holder:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 14, MIXER_BTN_BLOCK_H + (i - 1) * rowStep)
+    WireVolumeSlider(slider)
+    ui[row.key] = slider
+  end
+end
+
+local function BuildContentPanel(footer, DB)
+  local ui = NS.ui
+  local innerW = (WIN_W - 2 * PAD) - 28
+  local colW = math.floor((innerW - CONTENT_COL_GAP) / 2)
+  local pickerW = colW - CONTENT_LABEL_W - 8
+  local leftX = 14
+  local rightX = leftX + colW + CONTENT_COL_GAP
+  local rowStep = CONTENT_ROW_H + 4
+
+  ui.contentPickers = {}
+  local leftTags = { "world", "dungeon", "dungeon_current", "dungeon_legacy" }
+  local rightTags = { "raid", "raid_current", "raid_legacy" }
+
+  for i, tag in ipairs(leftTags) do
+    local row, picker = MakeModernPicker(footer, tag, pickerW, DB)
+    row:SetSize(colW, CONTENT_ROW_H)
+    row:SetPoint("BOTTOMLEFT", footer, "BOTTOMLEFT", leftX, FOOTER_PAD + (i - 1) * rowStep)
+    ui.contentPickers[tag] = picker
+  end
+
+  for i, tag in ipairs(rightTags) do
+    local row, picker = MakeModernPicker(footer, tag, pickerW, DB)
+    row:SetSize(colW, CONTENT_ROW_H)
+    row:SetPoint("BOTTOMLEFT", footer, "BOTTOMLEFT", rightX, FOOTER_PAD + (i - 1) * rowStep)
+    ui.contentPickers[tag] = picker
+  end
+
+  ui.cbContent = CreateFrame("CheckButton", nil, footer, "UICheckButtonTemplate")
+  ui.cbContent:Hide()
+  ui.cbContent:SetScript("OnClick", function()
+    DB.autoSwitchByContent = ui.cbContent:GetChecked()
+  end)
+
+  local contentRow = MakeToggleRow(footer, ui.cbContent, "Auto-switch by content")
+  contentRow:SetWidth(innerW)
+  contentRow:SetPoint("BOTTOMLEFT", footer, "BOTTOMLEFT", 14, FOOTER_CONTENT_BLOCK_H + 6)
+  ui._toggleContent = contentRow
+
+  local heading = MakeHeading(footer, "Content links")
+  heading:SetPoint("BOTTOMLEFT", contentRow, "TOPLEFT", -2, 8)
+
+  ui.contentStatus = footer:CreateFontString(nil, "OVERLAY")
+  ApplyFont(ui.contentStatus, 11)
+  ui.contentStatus:SetPoint("BOTTOMRIGHT", contentRow, "TOPRIGHT", 0, 10)
+  ui.contentStatus:SetTextColor(RGB(ACCENT))
+  ui.contentStatus:SetJustifyH("RIGHT")
+  ui.contentStatus:SetText("Now: World")
 end
 
 local function BuildFooter(footer, DB)
   local ui = NS.ui
   local innerW = (WIN_W - 2 * PAD) - 28
 
-  local heading = MakeHeading(footer, "Options")
-  heading:SetPoint("TOPLEFT", 12, -10)
-
-  ui.cbLogin = CreateFrame("CheckButton", nil, footer, "UICheckButtonTemplate")
-  ui.cbLogin:Hide()
-  ui.cbLogin:SetScript("OnClick", function()
-    DB.applyOnLogin = ui.cbLogin:GetChecked()
-  end)
-
-  local loginRow = MakeToggleRow(footer, ui.cbLogin, "Re-apply last profile after login")
-  loginRow:SetWidth(innerW)
-  loginRow:SetPoint("TOPLEFT", 14, -30)
-  ui._toggleLogin = loginRow
+  BuildContentPanel(footer, DB)
 
   ui.cbBar = CreateFrame("CheckButton", nil, footer, "UICheckButtonTemplate")
   ui.cbBar:Hide()
@@ -635,8 +954,22 @@ local function BuildFooter(footer, DB)
 
   local barRow = MakeToggleRow(footer, ui.cbBar, "Show draggable quick-switch bar")
   barRow:SetWidth(innerW)
-  barRow:SetPoint("TOPLEFT", loginRow, "BOTTOMLEFT", 0, -4)
+  barRow:SetPoint("BOTTOMLEFT", footer, "BOTTOMLEFT", 14, FOOTER_CONTENT_SECTION_H + FOOTER_SECTION_GAP)
   ui._toggleBar = barRow
+
+  ui.cbLogin = CreateFrame("CheckButton", nil, footer, "UICheckButtonTemplate")
+  ui.cbLogin:Hide()
+  ui.cbLogin:SetScript("OnClick", function()
+    DB.applyOnLogin = ui.cbLogin:GetChecked()
+  end)
+
+  local loginRow = MakeToggleRow(footer, ui.cbLogin, "Re-apply last profile after login")
+  loginRow:SetWidth(innerW)
+  loginRow:SetPoint("BOTTOMLEFT", barRow, "TOPLEFT", 0, -FOOTER_TOGGLE_GAP)
+  ui._toggleLogin = loginRow
+
+  local heading = MakeHeading(footer, "Options")
+  heading:SetPoint("BOTTOMLEFT", loginRow, "TOPLEFT", -2, 8)
 end
 
 local function BuildQuickBar(DB)
@@ -729,6 +1062,14 @@ function NS.BuildUI()
 
   BuildQuickBar(DB)
 
+  f:HookScript("OnHide", function()
+    if ui.contentPickers then
+      for _, picker in pairs(ui.contentPickers) do
+        HidePickerMenu(picker)
+      end
+    end
+  end)
+
   f:Hide()
 end
 
@@ -742,6 +1083,7 @@ function NS.ToggleMainFrame()
     NS.RefreshList()
     NS.WidgetsFromProfile(NS.SelectedProfile())
     NS.RefreshQuickBar()
+    NS.RefreshContentUI()
     NS.ui.frame:Show()
   end
 end

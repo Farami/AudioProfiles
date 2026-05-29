@@ -2,12 +2,14 @@
 ## Title: Audio Profiles
 ## Notes: Save volume levels (Master, Music, Effects, Ambience, Dialog, DSP) and switch between audio profiles.
 ## Author: AudioProfiles
-## Version: 1.1.0
+## Version: 1.2.0
 ## SavedVariables: AudioProfilesDB
 
 Addon.lua
 Const.lua
 Sound.lua
+ContentIndex.lua
+Content.lua
 Profiles.lua
 Data.lua
 UI.lua

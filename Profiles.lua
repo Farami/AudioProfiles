@@ -49,11 +49,7 @@ function NS.WidgetsFromProfile(p)
   ui.slDlg:SetValue(p.dialog * 100)
   ui.cbDSP:SetChecked(p.dsp)
   uiSilent = false
-  ui.laMaster:SetText(string.format("%.0f%%", p.master * 100))
-  ui.laMusic:SetText(string.format("%.0f%%", p.music * 100))
-  ui.laSFX:SetText(string.format("%.0f%%", p.sfx * 100))
-  ui.laAmb:SetText(string.format("%.0f%%", p.ambience * 100))
-  ui.laDlg:SetText(string.format("%.0f%%", p.dialog * 100))
+  NS.RefreshSliderVisuals()
   NS.RefreshSwitchVisuals()
 end
 
@@ -114,7 +110,9 @@ function NS.RefreshQuickBar()
   for _, b in ipairs(ui.qbBtns) do
     b:Hide()
   end
-  local totalW = 12
+  local SIDE = 6
+  local GAP = 4
+  local contentW = 0
   for i, pr in ipairs(DB.profiles) do
     local b = ui.qbBtns[i]
     if not b then
@@ -135,16 +133,17 @@ function NS.RefreshQuickBar()
     end
     b:SetText(short)
     b:SetWidth(math.max(70, 8 * #short))
-    totalW = totalW + b:GetWidth() + 4
     b:ClearAllPoints()
     if i == 1 then
-      b:SetPoint("LEFT", ui.qbFrame, "LEFT", 6, 0)
+      b:SetPoint("LEFT", ui.qbFrame, "LEFT", SIDE, 0)
+      contentW = b:GetWidth()
     else
-      b:SetPoint("LEFT", ui.qbBtns[i - 1], "RIGHT", 4, 0)
+      b:SetPoint("LEFT", ui.qbBtns[i - 1], "RIGHT", GAP, 0)
+      contentW = contentW + GAP + b:GetWidth()
     end
     b:Show()
   end
-  ui.qbFrame:SetWidth(math.max(80, totalW))
+  ui.qbFrame:SetWidth(math.max(80, contentW + SIDE * 2))
 end
 
 ApplyIndex = function(i, silent)

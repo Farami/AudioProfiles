@@ -22,15 +22,3 @@ function AudioProfilesAddon.ResolveRelativeFrame(name)
   end
   return UIParent
 end
-
-function AudioProfilesAddon.AttachCheckButtonText(cb, text)
-  local lbl = cb.Text
-  if lbl and lbl.SetText then
-    lbl:SetText(text)
-    return
-  end
-  lbl = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  lbl:SetPoint("LEFT", cb, "RIGHT", 4, 0)
-  cb.Text = lbl
-  lbl:SetText(text)
-end

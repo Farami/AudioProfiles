@@ -31,7 +31,7 @@ local FOOTER_TOGGLE_H = 28
 local FOOTER_TOGGLE_GAP = 4
 local FOOTER_SECTION_GAP = 10
 local FOOTER_HEADING_H = 14
-local FOOTER_CONTENT_ROWS = 4
+local FOOTER_CONTENT_ROWS = 3
 local FOOTER_CONTENT_BLOCK_H = FOOTER_PAD + FOOTER_CONTENT_ROWS * (CONTENT_ROW_H + 4)
 local FOOTER_CONTENT_SECTION_H = FOOTER_CONTENT_BLOCK_H + 6 + FOOTER_TOGGLE_H + 8 + FOOTER_HEADING_H
 local FOOTER_OPTIONS_SECTION_H = FOOTER_TOGGLE_H + FOOTER_TOGGLE_GAP + FOOTER_TOGGLE_H + 8 + FOOTER_HEADING_H
@@ -687,17 +687,17 @@ local function BuildTitleBar(f, ver)
   titleStr:SetTextColor(RGB(TEXT))
   titleStr:SetText("Audio Profiles")
 
+  local creditStr = titleBar:CreateFontString(nil, "OVERLAY")
+  ApplyFont(creditStr, 9)
+  creditStr:SetPoint("LEFT", titleStr, "RIGHT", 8, -1)
+  creditStr:SetTextColor(TEXT_DIM[1], TEXT_DIM[2], TEXT_DIM[3], 0.55)
+  creditStr:SetText("by Farami")
+
   local verStr = titleBar:CreateFontString(nil, "OVERLAY")
   ApplyFont(verStr, 10)
   verStr:SetPoint("RIGHT", -42, 0)
   verStr:SetTextColor(RGB(TEXT_DIM))
   verStr:SetText("v" .. ver)
-
-  local creditStr = titleBar:CreateFontString(nil, "OVERLAY")
-  ApplyFont(creditStr, 9)
-  creditStr:SetPoint("RIGHT", verStr, "LEFT", -10, -1)
-  creditStr:SetTextColor(TEXT_DIM[1], TEXT_DIM[2], TEXT_DIM[3], 0.55)
-  creditStr:SetText("by Farami")
 
   local closeBtn = CreateFrame("Button", nil, titleBar)
   closeBtn:SetSize(28, 28)
@@ -900,21 +900,22 @@ local function BuildContentPanel(footer, DB)
   local rowStep = CONTENT_ROW_H + 4
 
   ui.contentPickers = {}
-  local leftTags = { "world", "dungeon", "dungeon_current", "dungeon_legacy" }
-  local rightTags = { "raid", "raid_current", "raid_legacy" }
+  local contentRows = {
+    { tags = { "dungeon_legacy", "raid_legacy" } },
+    { tags = { "dungeon_current", "raid_current" } },
+    { tags = { "world" } },
+  }
 
-  for i, tag in ipairs(leftTags) do
-    local row, picker = MakeModernPicker(footer, tag, pickerW, DB)
-    row:SetSize(colW, CONTENT_ROW_H)
-    row:SetPoint("BOTTOMLEFT", footer, "BOTTOMLEFT", leftX, FOOTER_PAD + (i - 1) * rowStep)
-    ui.contentPickers[tag] = picker
-  end
+  for rowIndex, rowSpec in ipairs(contentRows) do
+    local bottomY = FOOTER_PAD + (rowIndex - 1) * rowStep
 
-  for i, tag in ipairs(rightTags) do
-    local row, picker = MakeModernPicker(footer, tag, pickerW, DB)
-    row:SetSize(colW, CONTENT_ROW_H)
-    row:SetPoint("BOTTOMLEFT", footer, "BOTTOMLEFT", rightX, FOOTER_PAD + (i - 1) * rowStep)
-    ui.contentPickers[tag] = picker
+    for colIndex, tag in ipairs(rowSpec.tags) do
+      local rowX = (colIndex == 1) and leftX or rightX
+      local row, picker = MakeModernPicker(footer, tag, pickerW, DB)
+      row:SetSize(colW, CONTENT_ROW_H)
+      row:SetPoint("BOTTOMLEFT", footer, "BOTTOMLEFT", rowX, bottomY)
+      ui.contentPickers[tag] = picker
+    end
   end
 
   ui.cbContent = CreateFrame("CheckButton", nil, footer, "UICheckButtonTemplate")
@@ -930,13 +931,6 @@ local function BuildContentPanel(footer, DB)
 
   local heading = MakeHeading(footer, "Content links")
   heading:SetPoint("BOTTOMLEFT", contentRow, "TOPLEFT", -2, 8)
-
-  ui.contentStatus = footer:CreateFontString(nil, "OVERLAY")
-  ApplyFont(ui.contentStatus, 11)
-  ui.contentStatus:SetPoint("BOTTOMRIGHT", contentRow, "TOPRIGHT", 0, 10)
-  ui.contentStatus:SetTextColor(RGB(ACCENT))
-  ui.contentStatus:SetJustifyH("RIGHT")
-  ui.contentStatus:SetText("Now: World")
 end
 
 local function BuildFooter(footer, DB)
@@ -968,8 +962,16 @@ local function BuildFooter(footer, DB)
   loginRow:SetPoint("BOTTOMLEFT", barRow, "TOPLEFT", 0, -FOOTER_TOGGLE_GAP)
   ui._toggleLogin = loginRow
 
-  local heading = MakeHeading(footer, "Options")
-  heading:SetPoint("BOTTOMLEFT", loginRow, "TOPLEFT", -2, 8)
+  local optionsHeading = MakeHeading(footer, "Options")
+  optionsHeading:SetPoint("BOTTOMLEFT", loginRow, "TOPLEFT", -2, 8)
+
+  ui.contentStatus = footer:CreateFontString(nil, "OVERLAY")
+  ApplyFont(ui.contentStatus, 11)
+  ui.contentStatus:SetPoint("TOPRIGHT", footer, "TOPRIGHT", -14, 0)
+  ui.contentStatus:SetPoint("TOP", optionsHeading, "TOP", 0, 0)
+  ui.contentStatus:SetTextColor(RGB(ACCENT))
+  ui.contentStatus:SetJustifyH("RIGHT")
+  ui.contentStatus:SetText("Now: World")
 end
 
 local function BuildQuickBar(DB)

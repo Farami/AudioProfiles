@@ -1,6 +1,5 @@
 --[[
-  Encounter Journal tier index: journalInstanceID -> EJ tier number.
-  Built once at login via EJ_GetNumTiers / EJ_SelectTier / EJ_GetInstanceByIndex.
+  Encounter Journal tier index and instance map lookups.
 ]]
 
 local NS = AudioProfilesAddon
@@ -9,13 +8,11 @@ NS.journalInstanceTier = {}
 NS.instanceMapToJournal = {}
 
 local function JournalMapIDs(journalInstanceID)
-  if not journalInstanceID or not EJ_GetInstanceInfo then
+  if not journalInstanceID then
     return nil, nil
   end
 
-  if EJ_SelectInstance then
-    EJ_SelectInstance(journalInstanceID)
-  end
+  EJ_SelectInstance(journalInstanceID)
 
   local _, _, _, _, _, _, dungeonAreaMapID, _, _, mapID = EJ_GetInstanceInfo(journalInstanceID)
   if mapID and mapID <= 0 then
@@ -35,15 +32,46 @@ local function RegisterMapLookup(mapLookup, mapID, journalID)
   end
 end
 
+local function TierFromSiblingJournal(journalInstanceID)
+  local mapID, dungeonAreaMapID = JournalMapIDs(journalInstanceID)
+  local name = EJ_GetInstanceInfo(journalInstanceID)
+  local targetName = NS.NormalizeInstanceName(name)
+
+  for otherID, tier in pairs(NS.journalInstanceTier) do
+    if otherID ~= journalInstanceID then
+      if targetName ~= "" then
+        local otherName = EJ_GetInstanceInfo(otherID)
+        if otherName and NS.NormalizeInstanceName(otherName) == targetName then
+          return tier
+        end
+      end
+
+      if mapID or dungeonAreaMapID then
+        local oMap, oDungeon = JournalMapIDs(otherID)
+        if (mapID and (mapID == oMap or mapID == oDungeon))
+            or (dungeonAreaMapID and (dungeonAreaMapID == oMap or dungeonAreaMapID == oDungeon)) then
+          return tier
+        end
+      end
+    end
+  end
+
+  return nil
+end
+
+local function CacheJournalTier(journalInstanceID, tier)
+  if journalInstanceID and tier then
+    NS.journalInstanceTier[journalInstanceID] = tier
+  end
+
+  return tier
+end
+
 function NS.BuildContentIndex()
   local tierMap = NS.journalInstanceTier
   local mapLookup = NS.instanceMapToJournal
   wipe(tierMap)
   wipe(mapLookup)
-
-  if not EJ_GetNumTiers or not EJ_SelectTier or not EJ_GetInstanceByIndex then
-    return
-  end
 
   local numTiers = EJ_GetNumTiers()
   for tier = 1, numTiers do
@@ -82,10 +110,6 @@ function NS.RegisterJournalInstance(journalInstanceID)
 
   NS.EnsureContentIndex()
 
-  if not EJ_GetNumTiers or not EJ_SelectTier or not EJ_GetInstanceByIndex then
-    return
-  end
-
   local numTiers = EJ_GetNumTiers()
   for tier = 1, numTiers do
     EJ_SelectTier(tier)
@@ -111,6 +135,8 @@ function NS.RegisterJournalInstance(journalInstanceID)
       end
     end
   end
+
+  CacheJournalTier(journalInstanceID, TierFromSiblingJournal(journalInstanceID))
 end
 
 function NS.JournalTierForInstance(journalInstanceID)
@@ -119,7 +145,19 @@ function NS.JournalTierForInstance(journalInstanceID)
   end
 
   NS.EnsureContentIndex()
-  return NS.journalInstanceTier[journalInstanceID]
+
+  local tier = NS.journalInstanceTier[journalInstanceID]
+  if tier then
+    return tier
+  end
+
+  NS.RegisterJournalInstance(journalInstanceID)
+  tier = NS.journalInstanceTier[journalInstanceID]
+  if tier then
+    return tier
+  end
+
+  return CacheJournalTier(journalInstanceID, TierFromSiblingJournal(journalInstanceID))
 end
 
 function NS.JournalForInstanceMapID(instanceMapID)
@@ -153,11 +191,11 @@ function NS.NormalizeInstanceName(name)
     return ""
   end
 
-  return name:lower():gsub("[''`´]", ""):gsub("[^a-z0-9]", "")
+  return name:lower():gsub("[''`´]", ""):gsub("[^a-z0-9]", ""):gsub("^legacy", "")
 end
 
 function NS.JournalForInstanceName(instanceName)
-  if not instanceName or not EJ_GetInstanceInfo then
+  if not instanceName then
     return nil
   end
 
@@ -175,7 +213,7 @@ function NS.JournalForInstanceName(instanceName)
 end
 
 function NS.ScanJournalForInstanceMapID(instanceMapID)
-  if not instanceMapID or not EJ_GetInstanceInfo then
+  if not instanceMapID then
     return nil
   end
 

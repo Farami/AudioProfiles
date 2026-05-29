@@ -24,30 +24,22 @@ NS.DB_DEFAULTS = {
   qbPoint = {"BOTTOM", "UIParent", "BOTTOM", 0, 120},
 }
 
--- Content tag display labels (UI order).
 NS.CONTENT_TAG_LABELS = {
   world = "World",
-  dungeon = "Dungeon (all)",
   dungeon_current = "Dungeon (Midnight)",
   dungeon_legacy = "Dungeon (legacy)",
-  raid = "Raid (all)",
   raid_current = "Raid (Midnight)",
   raid_legacy = "Raid (legacy)",
 }
 
--- Most specific binding wins.
 NS.CONTENT_BIND_ORDER = {
   "raid_current",
   "raid_legacy",
-  "raid",
   "dungeon_current",
   "dungeon_legacy",
-  "dungeon",
   "world",
 }
 
--- EJ tier index -> GetExpansionLevel() value.
--- Verify EJ_GetNumTiers() and extend when a new expansion ships.
 NS.EJ_TIER_TO_EXPANSION = {
   [1] = LE_EXPANSION_CLASSIC,
   [2] = LE_EXPANSION_BURNING_CRUSADE,

@@ -18,11 +18,25 @@ end
 
 function NS.SanitizeContentBindings()
   local DB = NS.db
-  if not DB or not DB.contentBindings then
-    return
+  local n = #DB.profiles
+  local removedGenericTags = {
+    dungeon = { "dungeon_current", "dungeon_legacy" },
+    raid = { "raid_current", "raid_legacy" },
+  }
+
+  for oldTag, newTags in pairs(removedGenericTags) do
+    local idx = DB.contentBindings[oldTag]
+    if idx then
+      for _, newTag in ipairs(newTags) do
+        if not DB.contentBindings[newTag] then
+          DB.contentBindings[newTag] = idx
+        end
+      end
+
+      DB.contentBindings[oldTag] = nil
+    end
   end
 
-  local n = #DB.profiles
   for tag, idx in pairs(DB.contentBindings) do
     if type(idx) ~= "number" or idx < 1 or idx > n then
       DB.contentBindings[tag] = nil
@@ -32,9 +46,6 @@ end
 
 function NS.ReindexContentBindingsAfterDelete(deletedIndex)
   local DB = NS.db
-  if not DB or not DB.contentBindings then
-    return
-  end
 
   for tag, idx in pairs(DB.contentBindings) do
     if idx == deletedIndex then

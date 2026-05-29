@@ -11,10 +11,6 @@ local function ContentLabel(tag)
 end
 
 local function JournalFromUiMapChain()
-  if not C_Map or not C_Map.GetBestMapForUnit or not EJ_GetInstanceForMap then
-    return nil
-  end
-
   local uiMapID = C_Map.GetBestMapForUnit("player")
   local seen = {}
 
@@ -50,7 +46,10 @@ local function ResolveJournalInstanceID(instanceMapID, instanceName)
 
   local fromUiMap = JournalFromUiMapChain()
   if fromUiMap then
-    return fromUiMap
+    NS.RegisterJournalInstance(fromUiMap)
+    if NS.journalInstanceTier[fromUiMap] then
+      return fromUiMap
+    end
   end
 
   if instanceName then
@@ -60,14 +59,12 @@ local function ResolveJournalInstanceID(instanceMapID, instanceName)
     end
   end
 
-  return nil
+  return fromUiMap
 end
 
 local function AppendDungeonTags(tags, expansion, currentExpansion)
-  tags[#tags + 1] = "dungeon"
-
   if expansion == nil then
-    return ContentLabel("dungeon")
+    return "Dungeon"
   end
 
   if expansion == currentExpansion then
@@ -80,10 +77,8 @@ local function AppendDungeonTags(tags, expansion, currentExpansion)
 end
 
 local function AppendRaidTags(tags, expansion, currentExpansion)
-  tags[#tags + 1] = "raid"
-
   if expansion == nil then
-    return ContentLabel("raid")
+    return "Raid"
   end
 
   if expansion == currentExpansion then
@@ -133,15 +128,7 @@ function NS.GetContentContext()
 end
 
 function NS.ResolveProfileIndexForContext(ctx)
-  if not ctx then
-    return nil
-  end
-
   local DB = NS.db
-  if not DB or not DB.contentBindings then
-    return nil
-  end
-
   local tagSet = {}
   for _, tag in ipairs(ctx.tags) do
     tagSet[tag] = true
@@ -212,18 +199,10 @@ function NS.ScheduleContentAutoSwitch()
   end
 end
 
-function NS.ApplyProfileForContent()
-  return NS.TryAutoSwitchContent()
-end
-
 function NS.ClearContentSuppress()
-  if NS.db then
-    NS.db.suppressAutoUntilLeave = false
-  end
+  NS.db.suppressAutoUntilLeave = false
 end
 
 function NS.SetContentSuppress()
-  if NS.db then
-    NS.db.suppressAutoUntilLeave = true
-  end
+  NS.db.suppressAutoUntilLeave = true
 end

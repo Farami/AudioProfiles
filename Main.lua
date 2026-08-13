@@ -113,7 +113,7 @@ SlashCmdList["AUDIO_PROFILES"] = function(msg)
   if arg == "list" then
     NS.Print("Profiles:")
     for i, p in ipairs(NS.db.profiles) do
-      print(string.format("  %d. %s", i, p.name))
+      NS.Print(string.format("  %d. %s", i, p.name))
     end
     return
   end

@@ -1,0 +1,11 @@
+package-as: AudioProfiles
+
+ignore:
+  - .git
+  - .github
+  - .cursor
+  - .gitignore
+  - .pkgmeta
+  - scripts
+  - dist
+  - "*.md"

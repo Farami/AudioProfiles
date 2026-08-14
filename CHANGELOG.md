@@ -5,7 +5,7 @@ All notable changes to Audio Profiles are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-08-14
 
 ### Added
 
@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   regardless of which expansion it originally shipped in. The pool is read live from the game,
   so it tracks the rotation on its own and needs no update when a new season starts.
 - `/ap season` prints the pool the season category currently matches against.
+- Offline test suite (`./scripts/test.sh`) that loads the real content files against a stubbed
+  WoW API. Not included in the release package.
 
 ### Fixed
 
@@ -49,4 +51,5 @@ First public release.
 - Slash commands: `/audioprofiles` and `/ap` (aliases for toggle, list, apply, next/prev, content debug).
 - SavedVariables migration for content-binding settings.
 
+[1.1.0]: #
 [1.0.0]: #

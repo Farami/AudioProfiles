@@ -86,7 +86,8 @@ release zip.
 ./scripts/package.sh
 ```
 
-Output: `dist/AudioProfiles-1.0.0.zip` (folder layout ready for CurseForge upload).
+Output: `dist/AudioProfiles-<version>.zip`, where `<version>` is read from `## Version` in the
+`.toc` (folder layout ready for CurseForge upload).
 
 ## CurseForge project setup
 

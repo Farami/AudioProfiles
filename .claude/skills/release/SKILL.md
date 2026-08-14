@@ -27,6 +27,8 @@ folded into the release commit.
   `## [X.Y.Z] - YYYY-MM-DD`, `### Added` / `### Changed` / `### Fixed` /
   `### Removed`, and a `[X.Y.Z]: #` link reference at the bottom of the
   file.
+- The changelog is shown to players on CurseForge. It only carries
+  changes a player can see or feel in the game.
 - `dist/` is gitignored and no zip is committed. `scripts/package.sh`
   exists only for a manual CurseForge upload when the git packager is
   not being used.
@@ -64,8 +66,15 @@ that also adds a slash command is a minor.
 4. **Write the changelog.** Promote an existing `## [Unreleased]`
    heading to `## [X.Y.Z] - <today>` (`date +%F`) and fold in whatever
    the diff shows it is missing; with no Unreleased section, write the
-   entry from the diff. Entries describe player-visible behaviour and
-   why it changed, not file names. Add the `[X.Y.Z]: #` link reference.
+   entry from the diff. Add the `[X.Y.Z]: #` link reference.
+
+   The audience is a player skimming the CurseForge changelog tab:
+   - One short sentence per `-` entry. Behaviour only — what changed for
+     the player, not how, not why, no file names, no API names, no
+     root-cause stories. The mechanism belongs in the commit body.
+   - Internal work never appears: dev tooling, Claude skills, tests, CI,
+     packaging, refactors, `## Interface` bumps, docs. It still counts
+     for the version tier; it just is not changelog material.
 5. **Bump `## Version:`** in `AudioProfiles.toc`, then
    `git grep -n "<old version>"` to catch stray references in the README
    or elsewhere.

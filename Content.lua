@@ -37,11 +37,6 @@ local function ResolveJournalInstanceIDUncached(instanceMapID, instanceName)
     if fromIndex then
       return fromIndex
     end
-
-    local fromScan = NS.ScanJournalForInstanceMapID(instanceMapID)
-    if fromScan then
-      return fromScan
-    end
   end
 
   local fromUiMap = JournalFromUiMapChain()
@@ -63,11 +58,13 @@ local function ResolveJournalInstanceIDUncached(instanceMapID, instanceName)
 end
 
 -- Instances the journal does not list at all (delves, brawls) make every fallback
--- above run to exhaustion, and ScanJournalForInstanceMapID walks the whole journal
--- with an EJ_SelectInstance per instance. GetContentContext runs on every profile
--- apply, so an uncached miss re-walks the journal per click and stalls the client.
--- Misses are cached as false; BuildContentIndex wipes the cache so journal data
--- that arrives later in the session can still be found.
+-- above run to exhaustion -- a map-chain walk plus an EJ_GetInstanceInfo per known
+-- journal instance. GetContentContext runs on every profile apply, so misses are
+-- cached as false rather than re-resolved per click. Two things wipe the cache:
+-- BuildContentIndex (an index rebuild invalidates map/tier lookups it feeds) and
+-- Main.lua's PLAYER_ENTERING_WORLD handler (every loading screen gets one fresh
+-- attempt, so a miss cached against a login-time journal index that loaded
+-- incomplete doesn't survive to relog).
 local resolveCache = {}
 
 function NS.InvalidateContentResolveCache()

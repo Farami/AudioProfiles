@@ -111,8 +111,8 @@ local function RegisterSeasonMapID(instanceMapID)
 
   NS.seasonInstanceMaps[instanceMapID] = true
 
-  -- Cheap table hit only. ScanJournalForInstanceMapID walks every instance with an
-  -- EJ_SelectInstance per step, which would hitch on zone-in for no real gain.
+  -- Cheap table hit only; anything more (an EJ walk) would hitch on zone-in for
+  -- no real gain.
   local journalID = NS.instanceMapToJournal[instanceMapID]
   if journalID then
     NS.seasonJournalIDs[journalID] = true
@@ -365,20 +365,3 @@ function NS.IsSeasonDungeon(instanceMapID, journalID, instanceName)
   return false
 end
 
-function NS.ScanJournalForInstanceMapID(instanceMapID)
-  if not instanceMapID then
-    return nil
-  end
-
-  NS.EnsureContentIndex()
-
-  for journalID in pairs(NS.journalInstanceTier) do
-    local mapID, dungeonAreaMapID = JournalMapIDs(journalID)
-    if mapID == instanceMapID or dungeonAreaMapID == instanceMapID then
-      RegisterMapLookup(NS.instanceMapToJournal, instanceMapID, journalID)
-      return journalID
-    end
-  end
-
-  return nil
-end

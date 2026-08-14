@@ -27,6 +27,13 @@ function NS.ProfileFromWidgetsInto(p)
 end
 
 function NS.SyncSelectedFromWidgets()
+  -- Keybinds can fire before the UI was ever built, and ProfileFromWidgetsInto
+  -- would nil-error on NS.ui.nameEdit. Existence is the only safe guard: closing
+  -- the window fires the name box's OnEditFocusLost after the frame is already
+  -- hidden, and that sync must still run or an in-progress rename is dropped.
+  if not NS.ui.frame then
+    return
+  end
   local p = NS.SelectedProfile()
   if not p then
     return
@@ -129,16 +136,14 @@ function NS.RefreshQuickBar()
           NS.OpenMainFrameForProfile(idx)
           return
         end
+        NS.SyncSelectedFromWidgets()
         ApplyIndex(idx)
       end)
       ui.qbBtns[i] = b
     end
-    local short = pr.name
-    if #short > 14 then
-      short = short:sub(1, 12) .. ".."
-    end
+    local short = NS.TruncateText(pr.name, 14)
     b:SetText(short)
-    b:SetWidth(math.max(70, 8 * #short))
+    b:SetWidth(math.max(70, 8 * (strlenutf8 and strlenutf8(short) or #short)))
     b:ClearAllPoints()
     if i == 1 then
       b:SetPoint("LEFT", ui.qbFrame, "LEFT", SIDE, 0)
@@ -218,6 +223,7 @@ function NS.ApplyNextProfile()
     return
   end
   local i = (NS.db.selectedIndex % n) + 1
+  NS.SyncSelectedFromWidgets()
   ApplyIndex(i, true, true)
   if NS.ui.frame and NS.ui.frame:IsShown() then
     NS.RefreshList()
@@ -236,6 +242,7 @@ function NS.ApplyPrevProfile()
   if i < 1 then
     i = n
   end
+  NS.SyncSelectedFromWidgets()
   ApplyIndex(i, true, true)
   if NS.ui.frame and NS.ui.frame:IsShown() then
     NS.RefreshList()

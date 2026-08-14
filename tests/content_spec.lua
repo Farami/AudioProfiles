@@ -218,13 +218,15 @@ local ok, err = pcall(contextFor, "Pit of Saron", 658)
 check("all-nil returns do not error", ok, true)
 if not ok then print("   error: " .. tostring(err)) end
 
-print("\n--- unlisted instance (delve): journal walk happens once, not per call ---")
--- Regression: GetContentContext runs on every profile apply; an instance the
--- journal does not list must not re-walk the whole journal on each call.
+print("\n--- unlisted instance (delve): resolution never stalls the client ---")
+-- Regression: GetContentContext runs on every profile apply. EJ_SelectInstance
+-- triggers encounter-data loads and froze the game for seconds on the first
+-- resolve in a delve; resolution must never call it, cold or cached, and repeat
+-- resolves must be free entirely.
 local s0, i0 = ejSelectCount, ejInfoCount
 c = contextFor("Earthcrawl Mines", 3100, "scenario")
 check("unlisted instance -> no tags", table.concat(c.tags, ","), "")
-check("first resolve walks the journal", ejSelectCount > s0, true)
+check("cold resolve: no EJ_SelectInstance calls", ejSelectCount - s0, 0)
 
 s0, i0 = ejSelectCount, ejInfoCount
 c = contextFor("Earthcrawl Mines", 3100, "scenario")
@@ -239,6 +241,34 @@ ORDER[#ORDER + 1] = 3001
 NS.BuildContentIndex()
 c = contextFor("Earthcrawl Mines", 3100, "scenario")
 check("rebuild finds the late-listed instance", table.concat(c.tags, ","), "dungeon_current")
+
+print("\n--- loading-screen cache wipe (no rebuild) finds a journal entry that arrived late ---")
+-- Simulates what a loading screen now does: Main.lua's OnEnteringWorld calls
+-- InvalidateContentResolveCache() before EnsureContentIndex/ScheduleContentAutoSwitch, so
+-- BuildContentIndex is NOT re-run here -- only the resolve cache is wiped. The instance is
+-- added to the journal stub but never indexed via BuildContentIndex; resolution instead
+-- falls through to the live UI-map chain (EJ_GetInstanceForMap), which registers it
+-- incrementally via RegisterJournalInstance -- the same live-EJ-read path a real zone-in
+-- takes when EJ data for the instance loaded after login.
+JOURNAL[1007] = { name = "Ashfall Crypts", tiers = { 12 }, mapID = 3500 }
+ORDER[#ORDER + 1] = 1007
+
+c = contextFor("Ashfall Crypts", 3500)
+check("not yet registered -> miss cached", table.concat(c.tags, ","), "")
+
+C_Map.GetBestMapForUnit = function() return 9999 end
+EJ_GetInstanceForMap = function(uiMapID) return uiMapID == 9999 and 1007 or nil end
+
+c = contextFor("Ashfall Crypts", 3500)
+check("stale cached miss survives without invalidation", table.concat(c.tags, ","), "")
+
+NS.InvalidateContentResolveCache()
+c = contextFor("Ashfall Crypts", 3500)
+check("cache wipe alone (no BuildContentIndex) finds the late-registered instance",
+  table.concat(c.tags, ","), "dungeon_current")
+
+C_Map.GetBestMapForUnit = function() return nil end
+EJ_GetInstanceForMap = function() return nil end
 
 print("")
 if failures == 0 then

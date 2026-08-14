@@ -210,6 +210,9 @@ end
 
 local function OnEnteringWorld()
   NS.ClearContentSuppress()
+  -- Every loading screen gets one fresh resolution attempt, so a cached miss from
+  -- an incomplete login-time journal index doesn't stick around all session.
+  NS.InvalidateContentResolveCache()
   NS.EnsureContentIndex()
   NS.ScheduleContentAutoSwitch()
 end
@@ -247,6 +250,8 @@ ev:RegisterEvent("PLAYER_LOGIN")
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ev:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 ev:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE")
+ev:RegisterEvent("PLAYER_REGEN_DISABLED")
+ev:RegisterEvent("PLAYER_REGEN_ENABLED")
 ev:SetScript("OnEvent", function(_, event, loaded)
   if event == "ADDON_LOADED" and loaded == addonName then
     NS.EnsureDB()
@@ -265,6 +270,16 @@ ev:SetScript("OnEvent", function(_, event, loaded)
 
   if event == "ZONE_CHANGED_NEW_AREA" then
     OnZoneChange()
+    return
+  end
+
+  if event == "PLAYER_REGEN_DISABLED" then
+    NS.OnCombatStart()
+    return
+  end
+
+  if event == "PLAYER_REGEN_ENABLED" then
+    NS.OnCombatEnd()
     return
   end
 

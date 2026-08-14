@@ -271,11 +271,7 @@ local function CreateButton(parent, w, h, label, primary)
 end
 
 local function TruncateText(text, maxLen)
-  if not text or #text <= maxLen then
-    return text or ""
-  end
-
-  return text:sub(1, maxLen - 2) .. ".."
+  return NS.TruncateText(text, maxLen)
 end
 
 local function HidePickerMenu(picker)
@@ -1088,8 +1084,35 @@ local function ShowMainFrame()
   NS.RefreshContentUI()
 end
 
+-- Sound CVars cannot be applied in combat, so an open window would drift out of
+-- sync with what a click actually did (worst case: deleting a profile left the
+-- mixer showing the dead profile, and the next slider touch wrote those values
+-- into the survivor). Instead the window closes for the fight and comes back
+-- after, refreshed from the real state.
+local reopenAfterCombat = false
+
+function NS.OnCombatStart()
+  local f = NS.ui.frame
+  if f and f:IsShown() then
+    reopenAfterCombat = true
+    f:Hide()
+  end
+end
+
+function NS.OnCombatEnd()
+  if reopenAfterCombat then
+    reopenAfterCombat = false
+    NS.PrepareUI()
+    ShowMainFrame()
+  end
+end
+
 function NS.ToggleMainFrame()
   NS.EnsureDB()
+  if InCombatLockdown() then
+    NS.Print("Settings are unavailable in combat.")
+    return
+  end
   NS.PrepareUI()
   if NS.ui.frame:IsShown() then
     NS.ui.frame:Hide()
@@ -1102,6 +1125,10 @@ end
 -- without applying its volumes -- left-click already covers applying.
 function NS.OpenMainFrameForProfile(index)
   NS.EnsureDB()
+  if InCombatLockdown() then
+    NS.Print("Settings are unavailable in combat.")
+    return
+  end
   if not NS.db.profiles[index] then
     return
   end

@@ -49,8 +49,9 @@ local JOURNAL = {
 local ORDER = { 1001, 1002, 1003, 1004, 1005, 1006, 2001 }
 
 local selectedTier = 1
+local ejSelectCount, ejInfoCount = 0, 0
 EJ_SelectTier = function(t) selectedTier = t end
-EJ_SelectInstance = function() end
+EJ_SelectInstance = function() ejSelectCount = ejSelectCount + 1 end
 
 local function InTier(e, tier)
   for _, t in ipairs(e.tiers) do
@@ -72,6 +73,7 @@ EJ_GetInstanceByIndex = function(i, isRaid)
 end
 
 EJ_GetInstanceInfo = function(id)
+  ejInfoCount = ejInfoCount + 1
   local e = JOURNAL[id]
   if not e then return nil end
   -- name, _, _, _, _, _, dungeonAreaMapID, _, _, mapID
@@ -215,6 +217,28 @@ NS.InvalidateSeasonIndex()
 local ok, err = pcall(contextFor, "Pit of Saron", 658)
 check("all-nil returns do not error", ok, true)
 if not ok then print("   error: " .. tostring(err)) end
+
+print("\n--- unlisted instance (delve): journal walk happens once, not per call ---")
+-- Regression: GetContentContext runs on every profile apply; an instance the
+-- journal does not list must not re-walk the whole journal on each call.
+local s0, i0 = ejSelectCount, ejInfoCount
+c = contextFor("Earthcrawl Mines", 3100, "scenario")
+check("unlisted instance -> no tags", table.concat(c.tags, ","), "")
+check("first resolve walks the journal", ejSelectCount > s0, true)
+
+s0, i0 = ejSelectCount, ejInfoCount
+c = contextFor("Earthcrawl Mines", 3100, "scenario")
+check("repeat resolve: no EJ_SelectInstance calls", ejSelectCount - s0, 0)
+check("repeat resolve: no EJ_GetInstanceInfo calls", ejInfoCount - i0, 0)
+
+print("\n--- index rebuild wipes the resolve cache ---")
+-- The miss above was cached; a rebuild must forget it so journal data that
+-- arrives later in the session can still be found.
+JOURNAL[3001] = { name = "Earthcrawl Mines", tiers = { 12 }, mapID = 3100 }
+ORDER[#ORDER + 1] = 3001
+NS.BuildContentIndex()
+c = contextFor("Earthcrawl Mines", 3100, "scenario")
+check("rebuild finds the late-listed instance", table.concat(c.tags, ","), "dungeon_current")
 
 print("")
 if failures == 0 then

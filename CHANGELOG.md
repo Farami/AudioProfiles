@@ -5,6 +5,24 @@ All notable changes to Audio Profiles are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-14
+
+### Added
+
+- Right-clicking a profile button on the quick-switch bar opens the settings window with that
+  profile selected for editing. Left-click still applies the profile; right-click only selects
+  it, so you can inspect or tweak a profile without changing the game's volumes.
+
+### Fixed
+
+- Switching profiles inside a delve (or any instance the Encounter Journal doesn't list) still
+  stuttered the game for a while after each switch, even with 1.1.1's CVar fix. Every profile
+  apply re-resolved the current content context, and for an unlisted instance that walked the
+  entire Encounter Journal — one `EJ_SelectInstance` per journal entry, each one making the
+  client load encounter data. Journal lookups now remember misses, so an unlisted instance
+  costs at most one walk per session, and the context readout is no longer computed at all
+  while the settings window is closed.
+
 ## [1.1.1] - 2026-08-14
 
 ### Fixed
@@ -63,6 +81,7 @@ First public release.
 - Slash commands: `/audioprofiles` and `/ap` (aliases for toggle, list, apply, next/prev, content debug).
 - SavedVariables migration for content-binding settings.
 
+[1.2.0]: #
 [1.1.1]: #
 [1.1.0]: #
 [1.0.0]: #

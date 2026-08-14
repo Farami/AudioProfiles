@@ -125,6 +125,7 @@ function NS.BuildContentIndex()
   wipe(tierMap)
   wipe(mapLookup)
   NS._currentExpansionTier = nil
+  NS.InvalidateContentResolveCache()
 
   local numTiers = EJ_GetNumTiers()
   for tier = 1, numTiers do

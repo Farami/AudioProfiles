@@ -29,7 +29,7 @@ local function JournalFromUiMapChain()
   return nil
 end
 
-local function ResolveJournalInstanceID(instanceMapID, instanceName)
+local function ResolveJournalInstanceIDUncached(instanceMapID, instanceName)
   NS.EnsureContentIndex()
 
   if instanceMapID then
@@ -60,6 +60,34 @@ local function ResolveJournalInstanceID(instanceMapID, instanceName)
   end
 
   return fromUiMap
+end
+
+-- Instances the journal does not list at all (delves, brawls) make every fallback
+-- above run to exhaustion, and ScanJournalForInstanceMapID walks the whole journal
+-- with an EJ_SelectInstance per instance. GetContentContext runs on every profile
+-- apply, so an uncached miss re-walks the journal per click and stalls the client.
+-- Misses are cached as false; BuildContentIndex wipes the cache so journal data
+-- that arrives later in the session can still be found.
+local resolveCache = {}
+
+function NS.InvalidateContentResolveCache()
+  wipe(resolveCache)
+end
+
+local function ResolveJournalInstanceID(instanceMapID, instanceName)
+  local key = instanceMapID or instanceName
+  if key == nil then
+    return ResolveJournalInstanceIDUncached(instanceMapID, instanceName)
+  end
+
+  local cached = resolveCache[key]
+  if cached ~= nil then
+    return cached or nil
+  end
+
+  local journalID = ResolveJournalInstanceIDUncached(instanceMapID, instanceName)
+  resolveCache[key] = journalID or false
+  return journalID
 end
 
 -- A season-pool dungeon from an older expansion carries both dungeon_season and

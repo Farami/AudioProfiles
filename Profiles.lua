@@ -123,7 +123,12 @@ function NS.RefreshQuickBar()
 
       NS.PrepareQuickBarButton(b)
 
-      b:SetScript("OnClick", function()
+      b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+      b:SetScript("OnClick", function(_, mouseButton)
+        if mouseButton == "RightButton" then
+          NS.OpenMainFrameForProfile(idx)
+          return
+        end
         ApplyIndex(idx)
       end)
       ui.qbBtns[i] = b

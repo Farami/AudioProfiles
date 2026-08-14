@@ -619,9 +619,12 @@ function NS.UpdateListScroll()
   end
 end
 
+-- GetContentContext can walk the Encounter Journal; never compute it for a window
+-- nobody can see. ToggleMainFrame refreshes after Show(), so a hidden frame always
+-- catches up when it next opens.
 function NS.RefreshContentUI()
   local ui = NS.ui
-  if not ui.frame then
+  if not ui.frame or not ui.frame:IsShown() then
     return
   end
 
@@ -1076,17 +1079,38 @@ function NS.BuildUI()
   f:Hide()
 end
 
+local function ShowMainFrame()
+  NS.ui.frame:Show()
+  NS.UpdateOptionsCheckboxes()
+  NS.RefreshList()
+  NS.WidgetsFromProfile(NS.SelectedProfile())
+  NS.RefreshQuickBar()
+  NS.RefreshContentUI()
+end
+
 function NS.ToggleMainFrame()
   NS.EnsureDB()
   NS.PrepareUI()
   if NS.ui.frame:IsShown() then
     NS.ui.frame:Hide()
   else
-    NS.UpdateOptionsCheckboxes()
-    NS.RefreshList()
-    NS.WidgetsFromProfile(NS.SelectedProfile())
-    NS.RefreshQuickBar()
-    NS.RefreshContentUI()
-    NS.ui.frame:Show()
+    ShowMainFrame()
   end
+end
+
+-- Right-click on a quick-bar button: open the window on that profile for editing,
+-- without applying its volumes -- left-click already covers applying.
+function NS.OpenMainFrameForProfile(index)
+  NS.EnsureDB()
+  if not NS.db.profiles[index] then
+    return
+  end
+
+  NS.PrepareUI()
+  if NS.ui.frame:IsShown() then
+    NS.SyncSelectedFromWidgets()
+  end
+
+  NS.db.selectedIndex = index
+  ShowMainFrame()
 end

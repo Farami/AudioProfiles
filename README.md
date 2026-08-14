@@ -35,8 +35,13 @@ Open with `/audioprofiles`, `/ap`, or the **Toggle configuration window** keybin
 Assign a profile to each content category:
 
 - World
-- Dungeon (Midnight) / Dungeon (legacy)
-- Raid (Midnight) / Raid (legacy)
+- Dungeon (season) — any dungeon in the current Mythic+ rotation, whatever expansion it came from
+- Dungeon (current expansion) / Dungeon (legacy)
+- Raid (current expansion) / Raid (legacy)
+
+The season pool is read live from the game, so it follows the Mythic+ rotation on its own and needs no update when the season changes. A legacy dungeon that is in the current pool matches **both** its season and legacy category; the season binding wins if you set one, otherwise it falls through to legacy.
+
+Categories resolve most specific first: `raid_current`, `raid_legacy`, `dungeon_season`, `dungeon_current`, `dungeon_legacy`, `world`.
 
 When **Auto-switch by content** is enabled, entering a matching instance or the open world switches profiles automatically. Manual profile changes suppress auto-switch until you leave the zone.
 
@@ -52,8 +57,9 @@ When **Auto-switch by content** is enabled, entering a matching instance or the 
 | `/ap context` | Print current content detection (debug) |
 | `/ap links` | Print content bindings |
 | `/ap link <tag> <profile>` | Set a content binding from chat |
+| `/ap season` | Print the current Mythic+ pool the season tag matches against (debug) |
 
-Content tags: `world`, `dungeon_current`, `dungeon_legacy`, `raid_current`, `raid_legacy`.
+Content tags: `world`, `dungeon_season`, `dungeon_current`, `dungeon_legacy`, `raid_current`, `raid_legacy`.
 
 ### Keybindings
 
@@ -62,6 +68,17 @@ Under **Game Menu → Options → Keybindings → AddOns → Audio Profiles**:
 - Toggle configuration window
 - Apply next profile
 - Apply previous profile
+
+## Tests
+
+```bash
+./scripts/test.sh
+```
+
+Syntax-checks every file, then runs `tests/content_spec.lua` — an offline suite that stubs
+the WoW API and loads the real `Const.lua` / `ContentIndex.lua` / `Content.lua` to assert how
+content is tagged. Needs a Lua 5.1 interpreter; no game client. Tests are not included in the
+release zip.
 
 ## Building a release zip
 

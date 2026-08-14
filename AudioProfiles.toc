@@ -1,4 +1,4 @@
-## Interface: 120007, 120005
+## Interface: 120100, 120007
 ## Title: Audio Profiles
 ## Notes: Save volume levels (Master, Music, Effects, Ambience, Dialog, DSP) and switch between audio profiles.
 ## Author: AudioProfiles

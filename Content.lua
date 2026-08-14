@@ -62,26 +62,38 @@ local function ResolveJournalInstanceID(instanceMapID, instanceName)
   return fromUiMap
 end
 
-local function AppendDungeonTags(tags, expansion, currentExpansion)
-  if expansion == nil then
+-- A season-pool dungeon from an older expansion carries both dungeon_season and
+-- dungeon_legacy; bind order decides which one wins. Tags are appended most-specific
+-- first so the label always names the highest-precedence tag.
+local function AppendDungeonTags(tags, tier, isSeason)
+  local first = #tags + 1
+
+  if isSeason then
+    tags[#tags + 1] = "dungeon_season"
+  end
+
+  if tier ~= nil then
+    if NS.IsCurrentExpansionTier(tier) then
+      tags[#tags + 1] = "dungeon_current"
+    else
+      tags[#tags + 1] = "dungeon_legacy"
+    end
+  end
+
+  local primary = tags[first]
+  if not primary then
     return "Dungeon"
   end
 
-  if expansion == currentExpansion then
-    tags[#tags + 1] = "dungeon_current"
-    return ContentLabel("dungeon_current")
-  end
-
-  tags[#tags + 1] = "dungeon_legacy"
-  return ContentLabel("dungeon_legacy")
+  return ContentLabel(primary)
 end
 
-local function AppendRaidTags(tags, expansion, currentExpansion)
-  if expansion == nil then
+local function AppendRaidTags(tags, tier)
+  if tier == nil then
     return "Raid"
   end
 
-  if expansion == currentExpansion then
+  if NS.IsCurrentExpansionTier(tier) then
     tags[#tags + 1] = "raid_current"
     return ContentLabel("raid_current")
   end
@@ -102,14 +114,14 @@ function NS.GetContentContext()
   local name, _, _, _, _, _, _, instanceMapID = GetInstanceInfo()
   local journalID = ResolveJournalInstanceID(instanceMapID, name)
   local tier = NS.JournalTierForInstance(journalID)
-  local expansion = NS.ExpansionForJournalTier(tier)
-  local currentExpansion = GetExpansionLevel()
   local label
+  local isSeason = false
 
   if instanceType == "party" or instanceType == "scenario" then
-    label = AppendDungeonTags(tags, expansion, currentExpansion)
+    isSeason = NS.IsSeasonDungeon(instanceMapID, journalID, name)
+    label = AppendDungeonTags(tags, tier, isSeason)
   elseif instanceType == "raid" then
-    label = AppendRaidTags(tags, expansion, currentExpansion)
+    label = AppendRaidTags(tags, tier)
   else
     label = name or "Instance"
   end
@@ -121,9 +133,10 @@ function NS.GetContentContext()
     contextKey = contextKey,
     journalID = journalID,
     tier = tier,
-    expansion = expansion,
+    currentTier = NS.CurrentExpansionTier(),
     instanceMapID = instanceMapID,
     instanceType = instanceType,
+    isSeason = isSeason,
   }
 end
 

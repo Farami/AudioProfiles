@@ -29,14 +29,19 @@ local function PrintContentContext()
   NS.Print("Tags: " .. table.concat(ctx.tags, ", "))
   if ctx.journalID then
     NS.Print(string.format(
-      "Journal: %s  tier: %s  expansion: %s  mapID: %s  type: %s",
+      "Journal: %s  tier: %s  currentTier: %s  mapID: %s  type: %s",
       tostring(ctx.journalID),
       tostring(ctx.tier),
-      tostring(ctx.expansion),
+      tostring(ctx.currentTier),
       tostring(ctx.instanceMapID),
       tostring(ctx.instanceType)
     ))
   end
+  NS.Print(string.format(
+    "Season pool: %s  in pool: %s",
+    NS._seasonIndexBuilt and "loaded" or "unavailable",
+    tostring(ctx.isSeason or false)
+  ))
   local idx, tag = NS.ResolveProfileIndexForContext(ctx)
   if idx then
     NS.Print("Resolved profile: " .. NS.db.profiles[idx].name .. " (via " .. tag .. ")")
@@ -58,6 +63,30 @@ local function PrintContentLinks()
   end
   if not any then
     NS.Print("  (none)")
+  end
+end
+
+local function PrintSeasonPool()
+  NS.InvalidateSeasonIndex()
+  NS.EnsureSeasonIndex()
+
+  local season = C_MythicPlus and C_MythicPlus.GetCurrentSeason and C_MythicPlus.GetCurrentSeason()
+  NS.Print("Mythic+ season: " .. tostring(season))
+
+  if not NS._seasonIndexBuilt then
+    NS.Print("  (pool not available yet - try again in a few seconds)")
+    return
+  end
+
+  local maps = C_ChallengeMode.GetMapTable() or {}
+  for _, challengeMapID in ipairs(maps) do
+    local ok, name, _, _, _, _, instanceMapID = pcall(C_ChallengeMode.GetMapUIInfo, challengeMapID)
+    NS.Print(string.format(
+      "  %s  challengeMapID: %s  instanceMapID: %s",
+      ok and tostring(name) or "(unavailable)",
+      tostring(challengeMapID),
+      ok and tostring(instanceMapID) or "?"
+    ))
   end
 end
 
@@ -128,6 +157,11 @@ SlashCmdList["AUDIO_PROFILES"] = function(msg)
     return
   end
 
+  if arg == "season" then
+    PrintSeasonPool()
+    return
+  end
+
   if arg == "link" then
     local tag, profile = rest:match("^(%S+)%s*(.*)$")
     tag = tag or ""
@@ -185,6 +219,11 @@ local function OnLogin()
   NS.BuildContentIndex()
   NS.PrepareUI()
 
+  -- Season map data is server-fed; ask for it early so the pool is ready on zone-in.
+  if C_MythicPlus and C_MythicPlus.RequestMapInfo then
+    pcall(C_MythicPlus.RequestMapInfo)
+  end
+
   C_Timer.After(0.55, function()
     if NS.db.autoSwitchByContent then
       NS.ScheduleContentAutoSwitch()
@@ -207,6 +246,7 @@ ev:RegisterEvent("ADDON_LOADED")
 ev:RegisterEvent("PLAYER_LOGIN")
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ev:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+ev:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE")
 ev:SetScript("OnEvent", function(_, event, loaded)
   if event == "ADDON_LOADED" and loaded == addonName then
     NS.EnsureDB()
@@ -225,6 +265,13 @@ ev:SetScript("OnEvent", function(_, event, loaded)
 
   if event == "ZONE_CHANGED_NEW_AREA" then
     OnZoneChange()
+    return
+  end
+
+  -- Covers a season rollover mid-session, which the zone-in retries never see.
+  if event == "CHALLENGE_MODE_MAPS_UPDATE" then
+    NS.InvalidateSeasonIndex()
+    NS.ScheduleContentAutoSwitch()
     return
   end
 end)

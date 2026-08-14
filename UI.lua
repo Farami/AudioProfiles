@@ -900,10 +900,11 @@ local function BuildContentPanel(footer, DB)
   local rowStep = CONTENT_ROW_H + 4
 
   ui.contentPickers = {}
+  -- Row 1 is bottom-most, so the left column reads season -> current -> legacy.
   local contentRows = {
     { tags = { "dungeon_legacy", "raid_legacy" } },
     { tags = { "dungeon_current", "raid_current" } },
-    { tags = { "world" } },
+    { tags = { "dungeon_season", "world" } },
   }
 
   for rowIndex, rowSpec in ipairs(contentRows) do

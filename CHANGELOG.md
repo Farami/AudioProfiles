@@ -5,6 +5,20 @@ All notable changes to Audio Profiles are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-14
+
+### Changed
+
+- The settings window closes when combat starts and reopens when combat ends; sound settings
+  can't be applied while fighting.
+
+### Fixed
+
+- A renamed profile no longer loses the new name when you switch profiles before confirming it.
+- Profile names with non-Latin characters no longer show a broken character when shortened.
+- Opening the settings for the first time inside a delve no longer freezes the game for
+  several seconds.
+
 ## [1.2.0] - 2026-08-14
 
 ### Added
@@ -52,6 +66,7 @@ First public release.
 - Keybindings: toggle config, next profile, previous profile.
 - Slash commands: `/audioprofiles` and `/ap`.
 
+[1.3.0]: #
 [1.2.0]: #
 [1.1.1]: #
 [1.1.0]: #

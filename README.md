@@ -80,6 +80,14 @@ the WoW API and loads the real `Const.lua` / `ContentIndex.lua` / `Content.lua` 
 content is tagged. Needs a Lua 5.1 interpreter; no game client. Tests are not included in the
 release zip.
 
+## Cutting a release
+
+Run `/release` in Claude Code (`.claude/skills/release/`). It reads every change since the
+last tag, derives the version bump from what actually changed, writes the changelog entry,
+bumps `## Version` in the `.toc`, runs the tests, then commits, tags `vX.Y.Z`, and pushes.
+Pass a tier to override the classification (`/release minor`). Pushing the tag is what
+triggers the CurseForge git packager.
+
 ## Building a release zip
 
 ```bash

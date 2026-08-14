@@ -5,6 +5,18 @@ All notable changes to Audio Profiles are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-08-14
+
+### Fixed
+
+- Switching profiles froze the game for seconds at a time, worst in instances with a lot of
+  ambient sound. Every apply wrote all six sound CVars unconditionally, and writing
+  `Sound_EnableDSPEffects` makes the client rebuild its DSP chain — a stall that scales with
+  the number of live sound emitters. CVars are now only written when the value actually
+  changes, so switching between profiles that share a setting costs nothing. Dragging a volume
+  slider was triggering the same rebuild on every frame of the drag and is fixed by the same
+  change.
+
 ## [1.1.0] - 2026-08-14
 
 ### Added
@@ -51,5 +63,6 @@ First public release.
 - Slash commands: `/audioprofiles` and `/ap` (aliases for toggle, list, apply, next/prev, content debug).
 - SavedVariables migration for content-binding settings.
 
+[1.1.1]: #
 [1.1.0]: #
 [1.0.0]: #

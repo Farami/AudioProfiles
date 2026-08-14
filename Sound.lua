@@ -22,17 +22,35 @@ function NS.SnapFromGame()
   }
 end
 
+-- Writing a sound CVar is not free: Sound_EnableDSPEffects rebuilds the DSP chain and
+-- stalls the client for seconds in emitter-heavy zones. Skip writes that are no-ops.
+local function SetVolume(name, value)
+  local cur = tonumber(GetCVar(name))
+  if cur and math.abs(cur - value) < 0.0005 then
+    return
+  end
+  SetCVar(name, tostring(value))
+end
+
+local function SetFlag(name, enabled)
+  local want = enabled and "1" or "0"
+  if GetCVar(name) == want then
+    return
+  end
+  SetCVar(name, want)
+end
+
 function NS.ApplySnap(s)
   if InCombatLockdown() then
     NS.Print("Cannot change sound settings in combat. Try again after combat.")
     return false
   end
-  SetCVar(CV.master, tostring(s.master))
-  SetCVar(CV.music, tostring(s.music))
-  SetCVar(CV.sfx, tostring(s.sfx))
-  SetCVar(CV.ambience, tostring(s.ambience))
-  SetCVar(CV.dialog, tostring(s.dialog))
-  SetCVar(CV.dsp, s.dsp and "1" or "0")
+  SetVolume(CV.master, s.master)
+  SetVolume(CV.music, s.music)
+  SetVolume(CV.sfx, s.sfx)
+  SetVolume(CV.ambience, s.ambience)
+  SetVolume(CV.dialog, s.dialog)
+  SetFlag(CV.dsp, s.dsp)
   return true
 end
 

@@ -51,6 +51,12 @@ An argument overrides the classification (`/release minor`).
 Classify from the diff, not the commit subjects. A commit called a fix
 that also adds a slash command is a minor.
 
+Classify by purpose, not mechanism: a behaviour change whose only reason
+to exist is fixing broken behaviour is part of the fix — patch, even
+when the fix introduces new automatic behaviour (e.g. a window closing
+itself to dodge a combat bug). Minor means a capability a player would
+deliberately reach for, not a side effect of repairing one.
+
 ## The ritual
 
 1. **Preflight.** On `master`, and level with `origin/master` after a
